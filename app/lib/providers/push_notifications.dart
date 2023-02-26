@@ -10,7 +10,8 @@ class PushNotifications {
   static const AndroidNotificationChannel channel = AndroidNotificationChannel(
     'high_importance_channel', // id
     'High Importance Notifications', // title
-    'This channel is used for important notifications.', // description
+    description:
+        'This channel is used for important notifications.', // description
     importance: Importance.high,
   );
 
@@ -34,12 +35,12 @@ class PushNotifications {
             android: AndroidNotificationDetails(
               channel.id,
               channel.name,
-              channel.description,
+              channelDescription: channel.description,
               color: Colors.blue,
               playSound: true,
               icon: android.smallIcon,
             ),
-            iOS: const IOSNotificationDetails(
+            iOS: const DarwinNotificationDetails(
               presentSound: true,
               presentBadge: true,
               presentAlert: true,
@@ -65,13 +66,13 @@ class PushNotifications {
 
     var initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
-    var initializationSettingsiOS = IOSInitializationSettings();
+    var initializationSettingsiOS = DarwinInitializationSettings();
     var initializationSettings = InitializationSettings(
         android: initializationSettingsAndroid, iOS: initializationSettingsiOS);
     flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
-      onSelectNotification: (payload) async {
-        onNotifications.add(payload);
+      onDidReceiveBackgroundNotificationResponse: (payload) async {
+        onNotifications.add(payload.payload);
       },
     );
 
@@ -91,12 +92,12 @@ class PushNotifications {
             android: AndroidNotificationDetails(
               channel.id,
               channel.name,
-              channel.description,
+              channelDescription: channel.description,
               color: Colors.blue,
               playSound: true,
               icon: android?.smallIcon,
             ),
-            iOS: const IOSNotificationDetails(
+            iOS: const DarwinNotificationDetails(
               presentSound: true,
               presentBadge: true,
               presentAlert: true,

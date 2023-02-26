@@ -11,7 +11,7 @@ class RoomTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => PlatformListTile(
         leading: const Icon(Icons.room),
-        title: Text(room.name),
+        title: Text("Room ${room.number}"),
         subtitle: UsersRow(users: room.roommates),
         onTap: () => Navigator.of(context).push(
           platformPageRoute(

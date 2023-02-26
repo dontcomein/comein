@@ -311,38 +311,6 @@ class _LoginView extends State<LoginView> {
               width: size.width - 80,
             ),
           ),
-          if (NewPlatform.isIOS)
-            AppleAuthButton(
-              onPressed: () => context
-                  .read<AuthenticationService>()
-                  .signInWithApple()
-                  .then((_) => widget.returnBack ?? false
-                      ? Navigator.of(context).pop()
-                      : null),
-              themeMode: ThemeMode.dark,
-              style: AuthButtonStyle(
-                iconSize: 20,
-                width: size.width - 80,
-              ),
-            ),
-          if (!(context.read<User?>()?.isAnonymous ?? false))
-            EmailAuthButton(
-              onPressed: () {
-                setState(
-                  () {
-                    _controller.nextPage(
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.linear,
-                    );
-                  },
-                );
-              },
-              style: AuthButtonStyle(
-                iconSize: 20,
-                textStyle: const TextStyle(fontSize: 14),
-                width: size.width - 80,
-              ),
-            ),
         ],
       );
 }

@@ -24,9 +24,11 @@ class AuthenticationService {
     await firebaseFirestore.runTransaction((t) async {
       var snapshot = await t.get(docRef);
       List newTokens = snapshot.data()?['FCMtokens'];
-      // if (!newTokens.contains(dataModel.token) && dataModel.token != null) {
-      //   newTokens.add(dataModel.token!);
-      // }
+      print("have tokens: ${newTokens}");
+      if (!newTokens.contains(dataModel.token) && dataModel.token != null) {
+        print("adding token: ${dataModel.token}");
+        newTokens.add(dataModel.token!);
+      }
       return t.update(docRef, {'FCMtokens': newTokens});
     });
   }
@@ -36,6 +38,7 @@ class AuthenticationService {
     final docRef = firebaseFirestore
         .collection('users')
         .doc(_firebaseAuth.currentUser?.uid);
+    if ((await docRef.get()).data() == null) return;
     await firebaseFirestore.runTransaction((t) async {
       var snapshot = await t.get(docRef);
       List newTokens = snapshot.data()?['FCMtokens'];
@@ -102,7 +105,7 @@ class AuthenticationService {
 
   Future<void> signOut() async {
     await removeToken();
-    await _firebaseAuth.signOut();
+    return _firebaseAuth.signOut();
   }
 
   Future<UserCredential?> signInWithGoogle() async {
@@ -124,8 +127,9 @@ class AuthenticationService {
       if (_firebaseAuth.currentUser?.isAnonymous ?? false) {
         return _firebaseAuth.currentUser?.linkWithCredential(credential);
       }
+      print("REACHED");
       var result = await _firebaseAuth.signInWithCredential(credential);
-      addToken();
+      // addToken();
       return result;
     }
     return null;

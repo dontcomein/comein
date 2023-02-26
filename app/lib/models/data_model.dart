@@ -6,7 +6,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:comein/functions/extension_functions.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
-import 'package:get_it/get_it.dart';
 
 FirebaseFirestore firebaseFirestore = FirebaseFirestore.instance;
 FirebaseAuth firebaseAuth = FirebaseAuth.instance;
@@ -14,12 +13,20 @@ FirebaseFunctions firebaseFunctions = FirebaseFunctions.instance;
 FirebaseRemoteConfig remoteConfig = FirebaseRemoteConfig.instance;
 FirebaseMessaging messaging = FirebaseMessaging.instance;
 DataModel dataModel = DataModel();
-GetIt getIt = GetIt.instance;
 
 class DataModel {
-  List<Room> rooms = [Room.testing(), Room.testing()];
+  List<Room> rooms = [];
+  List<Room> inbox = [];
+  List<AppUser> friends = [];
   AppUser? currentUser;
   String? token;
+
+  Stream<DocumentSnapshot<Map<String, dynamic>>> get userStream =>
+      firebaseFirestore
+          .collection('users')
+          .doc(firebaseAuth.currentUser?.uid ?? "")
+          .snapshots();
+
   void update(Map<String, dynamic> json) {
     (json['rooms'] as Map<String, dynamic>?)?.let(
       (that) => rooms = that
@@ -27,5 +34,14 @@ class DataModel {
           .values
           .toList(),
     );
+    (json['inbox'] as Map<String, dynamic>?)?.let(
+      (that) => inbox = that
+          .map((key, value) => MapEntry(key, Room.fromJson(value, key)))
+          .values
+          .toList(),
+    );
   }
+
+  Future<HttpsCallableResult> addFriend(String email) =>
+      firebaseFunctions.httpsCallable('addFriend').call({'email': email});
 }

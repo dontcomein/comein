@@ -10,18 +10,26 @@ class Timer extends StatefulWidget {
 class _TimerState extends State<Timer> {
   @override
   Widget build(BuildContext context) => Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Theme.of(context).primaryColor, width: 2.0),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Center(child: Text(_timeLeft())));
+        decoration: BoxDecoration(
+          border: Border.all(color: Theme.of(context).primaryColor, width: 2.0),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Center(
+          child: Text(
+            _timeLeft(),
+            style: Theme.of(context).textTheme.displayMedium,
+          ),
+        ),
+      );
 
   String _timeLeft() {
     final difference = widget.endTime?.difference(DateTime.now());
-    if (difference == null || difference.isNegative) return "0:0:0";
+    if (difference == null || difference.isNegative) return "0:00:00";
     final hours = difference.inHours;
     final minutes = difference.inMinutes - hours * 60;
     final seconds = difference.inSeconds - minutes * 60 - hours * 3600;
-    return "$hours:$minutes:$seconds";
+    final paddedMins = (minutes < 10) ? "0$minutes" : "$minutes";
+    final paddedSecs = (seconds < 10) ? "0$seconds" : "$seconds";
+    return "$hours:$paddedMins:$paddedSecs";
   }
 }

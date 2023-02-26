@@ -5,10 +5,9 @@ import 'package:comein/models/app_user.dart';
 import 'package:comein/models/data_model.dart';
 import 'package:comein/providers/auth.dart';
 import 'package:comein/views/user/advanced_settings.dart';
-import 'package:cupertino_lists/cupertino_lists.dart';
+// import 'package:cupertino_lists/cupertino_lists.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:comein/functions/extension_functions.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:provider/provider.dart';
 
@@ -21,90 +20,55 @@ class UserView extends StatefulWidget {
 
 class _UserViewState extends State<UserView> {
   @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Column(
-        children: [
-          PFP(dataModel.currentUser ?? AppUser(uid: "")),
-          PlatformListTileGroup(
-            header: Text(widget.appUser.displayName ?? "Guest"),
-            children: [
-              PlatformTextFormField(
-                hintText: "Name",
-                initialValue: firebaseAuth.currentUser?.displayName,
-              ),
-              PlatformListTile(
-                title: const Text("Set Signature"),
-                trailing: dataModel.currentUser?.signature?.let(
-                      (that) => Container(
-                        color: that,
-                      ),
-                    ) ??
-                    (const CupertinoListTileChevron()),
-                onTap: () => showPlatformDialog(
-                  context: context,
-                  builder: (_) => PlatformAlertDialog(
-                    title: const Text("Set Signature"),
-                    content: ColorPicker(
-                      onColorChanged: (color) =>
-                          dataModel.currentUser?.signature = color,
-                      initial: dataModel.currentUser?.signature,
+  Widget build(BuildContext context) => SafeArea(
+        child: Column(
+          children: [
+            PFP(dataModel.currentUser ?? AppUser(uid: "")),
+            PlatformListTileGroup(
+              header: Text(widget.appUser.displayName ?? "Guest"),
+              children: [
+                PlatformListTile(
+                  title: const Text("Advanced Settings"),
+                  trailing: const CupertinoListTileChevron(),
+                  onTap: () => Navigator.push(
+                    context,
+                    platformPageRoute(
+                      context: context,
+                      builder: (_) => const AdvancedSettings(),
                     ),
-                    actions: [
-                      PlatformDialogAction(
-                        child: const Text("Cancel"),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                      PlatformDialogAction(
-                        child: const Text("Save"),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                    ],
                   ),
                 ),
-              ),
-              PlatformListTile(
-                title: const Text("Advanced Settings"),
-                trailing: const CupertinoListTileChevron(),
-                onTap: () => Navigator.push(
-                  context,
-                  platformPageRoute(
+                PlatformTextButton(
+                  child: const Text(
+                    "Sign Out",
+                    style: TextStyle(color: CupertinoColors.systemRed),
+                  ),
+                  onPressed: () => showPlatformDialog(
                     context: context,
-                    builder: (_) => const AdvancedSettings(),
+                    builder: (context) => PlatformAlertDialog(
+                      title: const Text("Sign Out"),
+                      content: const Text("Are you sure you want to sign out?"),
+                      actions: [
+                        PlatformDialogAction(
+                          child: const Text("Cancel"),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                        PlatformDialogAction(
+                          child: const Text("Confirm",
+                              style:
+                                  TextStyle(color: CupertinoColors.systemRed)),
+                          onPressed: () => context
+                              .read<AuthenticationService>()
+                              .signOut()
+                              .then((value) => Navigator.pop(context)),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              PlatformTextButton(
-                child: const Text(
-                  "Sign Out",
-                  style: TextStyle(color: CupertinoColors.systemRed),
-                ),
-                onPressed: () => showPlatformDialog(
-                  context: context,
-                  builder: (context) => PlatformAlertDialog(
-                    title: const Text("Sign Out"),
-                    content: const Text("Are you sure you want to sign out?"),
-                    actions: [
-                      PlatformDialogAction(
-                        child: const Text("Cancel"),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                      PlatformDialogAction(
-                        child: const Text("Confirm",
-                            style: TextStyle(color: CupertinoColors.systemRed)),
-                        onPressed: () => context
-                            .read<AuthenticationService>()
-                            .signOut()
-                            .then((value) => Navigator.pop(context)),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+              ],
+            ),
+          ],
+        ),
+      );
 }

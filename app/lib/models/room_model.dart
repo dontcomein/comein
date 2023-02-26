@@ -1,54 +1,51 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:comein/main.dart';
 import 'package:comein/models/data_model.dart';
 import 'package:comein/models/room_state.dart';
 import 'package:comein/functions/extension_functions.dart';
 import 'package:comein/models/app_user.dart';
+import 'package:comein/providers/bluetooth_connect.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 class Room {
   String name;
-  String? message;
   RoomState? state;
   List<RoomState> states;
+  RoomState? get currentState => (state?.expired() ?? false) ? null : state;
   List<AppUser> roommates = [];
   GeoPoint? location;
-  int? floorNumber, roomNumber;
-  AppUser? lastSetter;
-  Timestamp? expirationDate;
-  bool isLounge;
-  late String uid;
+  int number;
+  AppUser? owner;
+  String uid;
+  bool isComeIn = false;
 
   Room({
     required this.name,
+    required this.number,
     this.location,
     this.state,
-    this.isLounge = false,
-    this.message,
-    this.expirationDate,
+    this.owner,
     this.states = const [],
+    this.roommates = const [],
+    required this.uid,
+    this.isComeIn = false,
   });
 
-  bool equals(Room other) {
-    final val = uid == other.uid &&
-        state == other.state &&
-        name == other.name &&
-        message == other.message &&
-        location == other.location &&
-        isLounge == other.isLounge;
-    return val;
-  }
+  bool equals(Room other) =>
+      uid == other.uid &&
+      state == other.state &&
+      name == other.name &&
+      location == other.location;
 
   bool operator ==(other) => other is Room ? equals(other) : false;
 
   Room assign(Room other) {
     uid = other.uid;
     name = other.name;
-    message = other.message;
     state = other.state;
     location = other.location;
-    isLounge = other.isLounge;
     return this;
   }
 
@@ -61,56 +58,91 @@ class Room {
         'role': role.toString(),
       });
 
-  Color getColor() {
-    return state?.color ?? Colors.transparent;
-  }
-
-  void setState(RoomState state) => getRef().update({
-        'state': state.toString(),
-        'lastSetter': firebaseAuth.currentUser
-            ?.let((that) => AppUser.fromFirebaseUser(that))
-            .toJson(),
+  Future<HttpsCallableResult> notifyState({required int notifyFriends}) =>
+      firebaseFunctions.httpsCallable('notifyState').call({
+        'stateName': state?.name,
+        'roomUid': uid,
+        'roomName': name,
+        'notifyFriends': notifyFriends,
       });
 
-  void saveChanges() =>
-      firebaseFirestore.collection('rooms').doc(uid).update(toJson());
+  Color getColor() {
+    return currentState?.color ?? Colors.transparent;
+  }
 
-  // TODO: Implement this
-  bool isConnected() => true;
+  Future<void> setState(RoomState? state) async {
+    await bluetoothController
+        .sendTextFieldValue(state?.broadcast() ?? "0,0,0,0");
+    isComeIn = state?.isComeIn ?? false;
+    // print(state.broadcast());
+    return getRef().update({
+      'state': state?.toJson(),
+      'isComeIn': state?.isComeIn ?? false,
+    });
+  }
+
+  Future<void> saveChanges() {
+    return firebaseFirestore.collection('rooms').doc(uid).update(toJson());
+  }
+
+  Future<bool> isConnected() async {
+    for (final connected in await flutterBlue.connectedDevices) {
+      if (connected.name == deviceName) return true;
+    }
+    return false;
+  }
 
   DocumentReference getRef() => firebaseFirestore.collection('rooms').doc(uid);
 
   Map<String, dynamic> toJson() => {
         'name': name,
-        'floorNumber': floorNumber,
-        'roomNumber': roomNumber,
+        'number': number,
         'roommates': {
           for (final roommate in roommates) roommate.uid: roommate.toJson(),
         },
         'state': state?.toJson(),
-        'location': location?.toJson(),
-        'lastSetter': lastSetter?.toJson(),
-        'message': message,
-        'isLounge': isLounge,
+        // 'location': location?.toJson(),
         'states': states.map((e) => e.toJson()).toList(),
-        'expirationDate': expirationDate,
+        'owner': owner?.toJson(),
+        'isComeIn': isComeIn,
       };
+
+  void update(DocumentSnapshot? snapshot) {
+    if (snapshot == null) return;
+    final map = snapshot.data() as Map<String, dynamic>?;
+    if (map == null) return;
+    name = map['name'];
+    // location = geoFromJson(map['location']);
+    number = map['number'];
+    state = (map['state'] as Map<String, dynamic>?)
+        ?.let((that) => RoomState.fromJson(that));
+    states =
+        (map['states'] as List?)?.map((e) => RoomState.fromJson(e)).toList() ??
+            [];
+    roommates = (map['roommates'] as Map<String, dynamic>?)
+            ?.map(
+              (key, value) => MapEntry(
+                key,
+                AppUser.fromJson(value),
+              ),
+            )
+            .values
+            .toList() ??
+        [];
+    owner = AppUser.fromJson(map['owner']);
+    isComeIn = map['isComeIn'] ?? false;
+  }
 
   Room.fromJson(Map<String, dynamic> map, this.uid)
       : name = map['name'],
         location = geoFromJson(map['location']),
-        floorNumber = map['floorNumber'],
-        roomNumber = map['roomNumber'],
+        number = map['number'],
         state = (map['state'] as Map<String, dynamic>?)
             ?.let((that) => RoomState.fromJson(that)),
         states = (map['states'] as List?)
                 ?.map((e) => RoomState.fromJson(e))
                 .toList() ??
             [],
-        message = map['message'],
-        lastSetter = AppUser.fromJson(
-          map['lastSetter'],
-        ),
         roommates = (map['roommates'] as Map<String, dynamic>?)
                 ?.map(
                   (key, value) => MapEntry(
@@ -121,53 +153,31 @@ class Room {
                 .values
                 .toList() ??
             [],
-        isLounge = map['isLounge'],
-        expirationDate = map['expirationDate'];
+        isComeIn = map['isComeIn'] ?? false,
+        owner = AppUser.fromJson(map['owner']);
 
   Room.testing()
       : name = "Alpha's Room",
-        floorNumber = 7,
-        roomNumber = 702,
+        number = 702,
         uid = '000',
         roommates = [
           AppUser(
               displayName: "Joseph",
               uid: const Uuid().v4(),
-              signature: Colors.deepOrange,
               photoURL:
                   "https://res.cloudinary.com/dtpgi0zck/image/upload/s--SsFGdDoP--/c_fill,h_580,w_860/v1/EducationHub/photos/ocean-waves.jpg"),
           AppUser(
               displayName: "Alex",
               uid: const Uuid().v4(),
-              signature: Colors.deepPurple,
               photoURL:
                   "https://d32qe1r3a676y7.cloudfront.net/eyJidWNrZXQiOiJibG9nLWVjb3RyZWUiLCJrZXkiOiAiYmxvZy8wMDAxLzAxL2FkNDZkYmI0NDdjZDBlOWE2YWVlY2Q2NGNjMmJkMzMyYjBjYmNiNzkuanBlZyIsImVkaXRzIjp7InJlc2l6ZSI6eyJ3aWR0aCI6IDkwMCwiaGVpZ2h0IjowLCJmaXQiOiJjb3ZlciJ9fX0="),
           AppUser(
             displayName: "Victor",
             uid: const Uuid().v4(),
-            signature: Colors.yellow,
           ),
         ],
         states = [
-          RoomState(
-            color: Colors.red,
-            name: "Busy",
-            lastSet: Timestamp.now(),
-            duration: const Duration(minutes: 30),
-          ),
-          RoomState(
-            color: Colors.green,
-            name: "Free",
-            lastSet: Timestamp.now(),
-            duration: const Duration(minutes: 30),
-          ),
-          RoomState(
-            color: Colors.yellow,
-            name: "Quiet",
-            lastSet: Timestamp.now(),
-            duration: const Duration(minutes: 30),
-          ),
-        ],
-        message = "Demon Time",
-        isLounge = false;
+          RoomState.busy(),
+          RoomState.quiet(),
+        ];
 }

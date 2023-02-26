@@ -1,5 +1,7 @@
 import 'package:comein/components/platform_graphics.dart';
+import 'package:comein/main.dart';
 import 'package:comein/models/room_model.dart';
+import 'package:comein/providers/bluetooth_connect.dart';
 import 'package:comein/views/room/room_tile.dart';
 import 'package:flutter/material.dart';
 
@@ -19,6 +21,7 @@ class _RoomListState extends State<RoomList> {
   Widget build(BuildContext context) => SafeArea(
         child: ListView(
           children: [
+            BluetoothConnect(deviceName),
             PlatformListTileGroup(
               header: const Text("Personal"),
               children: widget.rooms.map((e) => RoomTile(room: e)).toList(),
